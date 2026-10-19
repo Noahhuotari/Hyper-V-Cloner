@@ -1157,9 +1157,7 @@ $btnClone.Add_Click({
                     if ($ipDomainRestartInitiated) {
                          Add-Log -Message "    Guest OS initiated final restart. Process complete." -Color Green
                     } else {
-                         Add-Log -Message "    Guest OS settings applied. No final restart needed."
-                         Add-Log -Message "    Shutting down VM $newVMName (graceful)."
-                         Stop-VM -Name $newVMName -ComputerName $hvHost -Confirm:$false
+                         Add-Log -Message "    Guest OS settings applied. No final restart needed." -Color Green
                     }
 
                 } else {
@@ -1181,7 +1179,12 @@ $btnClone.Add_Click({
             if ($cluster -and (($hvHost -split '\.')[0] -ne ($targetHost -split '\.')[0])) {
                 Add-Log -Message "    Moving VM '$newVMName' from $hvHost to selected target host '$targetHost'..." -Color Cyan
                 if (-not $isTestMode) {
-                    $null = Move-ClusterVirtualMachineRole -Name $newVMName -Node $targetHost -Cluster $hostOrCluster -ErrorAction Stop
+                    $currentVmState = (Get-VM -Name $newVMName -ComputerName $hvHost -ErrorAction SilentlyContinue).State
+                    if ($currentVmState -eq "Running") {
+                        $null = Move-ClusterVirtualMachineRole -Name $newVMName -Node $targetHost -Cluster $hostOrCluster -ErrorAction Stop
+                    } else {
+                        $null = Move-ClusterGroup -Name $newVMName -Node $targetHost -Cluster $hostOrCluster -ErrorAction Stop
+                    }
                     $hvHost = $targetHost
                     Add-Log -Message "    Successfully moved '$newVMName' to '$targetHost'." -Color Green
                 } else {
